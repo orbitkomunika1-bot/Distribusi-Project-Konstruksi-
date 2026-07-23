@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PTSI ERP - Inventory & Asset Management</title>
+    
+    <!-- PWA Manifest Dynamic Injector -->
+    <link rel="manifest" id="manifest-placeholder">
+    <meta name="theme-color" content="#16a34a">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzE2YTM0YSIvPjwvc3ZnPg==">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 
+                            50: '#f0fdf4', 
+                            100: '#dcfce7', 
+                            200: '#bbf7d0',
+                            500: '#22c55e', 
+                            600: '#16a34a', 
+                            700: '#15803d', 
+                            800: '#166534', 
+                            900: '#14532d' 
+                        },
+                        dark: { 
+                            800: '#1e293b', 
+                            900: '#0f172a',
+                            950: '#020617'
+                        }
+                    },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Export Libraries -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #f8fafc; 
+            overflow-x: hidden; 
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+
+        .loader-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(4px);
+            z-index: 9999; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            transition: opacity 0.3s ease; 
+        }
+        
+        .spinner { 
+            border: 3.5px solid #e2e8f0; 
+            border-top: 3.5px solid #16a34a; 
+            border-radius: 50%; 
+            width: 44px; 
+            height: 44px; 
+            animation: spin 0.8s linear infinite; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hidden-force { display: none !important; }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up { animation: fadeInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        .sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); position: fixed; height: 100vh; z-index: 50; }
+            .sidebar.open { transform: translateX(0); }
+            .overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 40; }
+            .overlay.open { display: block; }
+        }
+
+        /* Printable Styles */
+        @media print {
+            body { background: white !important; color: black !important; }
+            #sidebar, header, .no-print, button { display: none !important; }
+            main { padding: 0 !important; margin: 0 !important; }
+            .print-only { display: block !important; }
+            .shadow-sm, .shadow-md, .shadow-xl { box-shadow: none !important; }
+            .border { border-color: #000 !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-full flex overflow-hidden bg-slate-50">
+
+    <!-- Global Loader -->
+    <div id="global-loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <p class="mt-4 font-semibold text-slate-700 tracking-wide text-sm animate-pulse">Memuat PTSI ERP System...</p>
+    </div>
+
+    <!-- VIEW: SETUP SUPER ADMIN -->
+    <div id="view-setup" class="hidden-force fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full my-8 border border-slate-100 animate-fade-in-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-brand-200">
+                    <i data-lucide="shield-check" class="w-8 h-8"></i>
+                </div>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Inisialisasi Sistem</h1>
+                <p class="text-xs text-slate-500 mt-2 leading-relaxed">Database kosong. Buat akun Super Admin untuk mengamankan dan mengonfigurasi sistem pertama kali.</p>
+            </div>
+            <form id="form-setup" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Nama Lengkap</label>
+                    <input type="text" id="setup-name" required class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition" placeholder="Contoh: Budi Santoso">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Username</label>
+                    <input type="text" id="setup-username" required class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition" placeholder="Username khusus (bukan 'admin')">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+                    <div class="relative">
+                        <input type="password" id="setup-password" required class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition pr-10" placeholder="Minimal 6 karakter">
+                        <button type="button" onclick="UI.togglePasswordVisibility('setup-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200/60 p-3.5 rounded-xl flex gap-3 mt-4">
+                    <i data-lucide="info" class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"></i>
+                    <p class="text-xs text-emerald-800 leading-relaxed">Akun ini memiliki hak akses penuh (Super Admin). Kredensial disimpan secara aman di browser local storage & IndexedDB Anda.</p>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-md shadow-brand-600/20 text-sm mt-6 flex items-center justify-center gap-2">
+                    <i data-lucide="check-circle-2" class="w-4 h-4"></i> Buat Super Admin & Mulai
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- VIEW: LOGIN -->
+    <div id="view-login" class="hidden-force fixed inset-0 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border border-slate-100 animate-fade-in-up">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand-500/30">
+                    <i data-lucide="box" class="w-9 h-9"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">PTSI ERP</h1>
+                <p class="text-xs text-slate-500 font-medium mt-1">Sistem Manajemen Inventory & Aset</p>
+            </div>
+            <form id="form-login" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Username</label>
+                    <input type="text" id="login-username" required class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition" placeholder="Masukkan username">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+                    <div class="relative">
+                        <input type="password" id="login-password" required class="w-full px-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition pr-10" placeholder="••••••••">
+                        <button type="button" onclick="UI.togglePasswordVisibility('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-md shadow-brand-600/20 text-sm mt-4 flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i> Masuk ke Sistem
+                </button>
+            </form>
+            <div class="mt-8 pt-4 border-t border-slate-100 text-center">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-[11px] font-semibold text-slate-500">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> V7.4.0 Production Build
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: MAIN APP -->
+    <div id="view-main" class="hidden-force flex w-full h-full">
+        <!-- Sidebar Backdrop for Mobile -->
+        <div id="sidebar-overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar w-64 bg-dark-900 text-slate-300 flex flex-col shrink-0 border-r border-dark-800 shadow-xl">
+            <div class="h-16 flex items-center px-6 border-b border-dark-800 bg-dark-950/50 shrink-0">
+                <div class="p-1.5 bg-brand-600 text-white rounded-lg mr-3 shadow-md shadow-brand-600/30">
+                    <i data-lucide="box" class="w-5 h-5"></i>
+                </div>
+                <span class="font-black text-lg text-white tracking-wider">PTSI<span class="text-brand-500">ERP</span></span>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto py-5 px-3 space-y-1 custom-scrollbar" id="sidebar-menu"></div>
+            
+            <div class="p-4 border-t border-dark-800/80 bg-dark-950/30 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-sm" id="user-avatar">SA</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate" id="user-name-display">Admin</p>
+                        <p class="text-[11px] font-medium text-slate-400 truncate" id="user-role-display">Super Admin</p>
+                    </div>
+                </div>
+                <button onclick="Auth.logout()" class="mt-3.5 w-full flex items-center justify-center gap-2 py-2 px-4 bg-dark-800/80 hover:bg-red-500/10 hover:text-red-400 border border-dark-800 hover:border-red-500/20 text-slate-300 rounded-xl transition text-xs font-semibold">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Shell -->
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 overflow-hidden">
+            <header class="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-4 lg:px-8 shrink-0 z-10 shadow-sm">
+                <div class="flex items-center">
+                    <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl mr-2 transition">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <h2 class="text-base lg:text-lg font-bold text-slate-800 tracking-tight" id="header-title">Dashboard</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="App.renderModule('backup')" class="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-xl transition border border-transparent hover:border-brand-200" title="Backup & Restore Data">
+                        <i data-lucide="database" class="w-5 h-5"></i>
+                    </button>
+                    <div class="h-5 w-px bg-slate-200 mx-1"></div>
+                    <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online IndexedDB
+                    </span>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 lg:p-8" id="main-content"></div>
+        </main>
+    </div>
+
+    <!-- Reusable Dynamic Modal -->
+    <div id="crud-modal" class="hidden-force fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="UI.closeModal()"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative z-10 border border-slate-100 overflow-hidden animate-fade-in-up">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2" id="modal-title">Form Data</h3>
+                <button onclick="UI.closeModal()" class="text-slate-400 hover:text-slate-600 transition p-1.5 hover:bg-slate-100 rounded-lg"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                <form id="crud-form" class="space-y-4"></form>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 shrink-0 flex justify-end gap-3">
+                <button type="button" onclick="UI.closeModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition">Batal</button>
+                <button type="button" onclick="CRUD.saveForm()" class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md shadow-brand-600/20 transition flex items-center gap-1.5">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Service Worker & Manifest Injector
+        const manifestData = {
+            "name": "PTSI ERP Inventory & Asset",
+            "short_name": "PTSI ERP",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#16a34a",
+            "icons": [{ "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzE2YTM0YSIvPjwvc3ZnPg==", "sizes": "192x192", "type": "image/svg+xml" }]
+        };
+        document.getElementById('manifest-placeholder').href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestData));
+
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
+            const swCode = `
+                const CACHE_NAME = 'ptsi-erp-v7-4';
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))).then(() => self.clients.claim())));
+                self.addEventListener('fetch', e => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+            `;
+            const swBlob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+        }
+
+        // Database Engine
+        const DB_NAME = 'PTSI_ERP_DB';
+        const DB_VERSION = 1;
+        const STORES = ['users', 'projects', 'warehouses', 'suppliers', 'items', 'transactions', 'audit_logs', 'settings'];
+
+        const DB = {
+            db: null,
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        STORES.forEach(store => {
+                            if (!db.objectStoreNames.contains(store)) {
+                                db.createObjectStore(store, { keyPath: 'id', autoIncrement: true });
+                            }
+                        });
+                    };
+                    request.onsuccess = (e) => { this.db = e.target.result; resolve(true); };
+                    request.onerror = (e) => { console.error("DB Error", e); reject(e); };
+                });
+            },
+            async getAll(store) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(store, 'readonly');
+                    const request = tx.objectStore(store).getAll();
+                    request.onsuccess = () => resolve(request.result || []);
+                });
+            },
+            async get(store, id) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(store, 'readonly');
+                    const request = tx.objectStore(store).get(Number(id));
+                    request.onsuccess = () => resolve(request.result);
+                });
+            },
+            async save(store, data) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const tx = this.db.transaction(store, 'readwrite');
+                        data.updatedAt = new Date().toISOString();
+                        if(!data.createdAt) data.createdAt = data.updatedAt;
+                        if (!data.id) delete data.id;
+
+                        const request = data.id ? tx.objectStore(store).put(data) : tx.objectStore(store).add(data);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = (e) => reject(e.target.error);
+                    } catch (err) { reject(err); }
+                });
+            },
+            async delete(store, id) {
+                return new Promise((resolve, reject) => {
+                    try {
+                        const tx = this.db.transaction(store, 'readwrite');
+                        const request = tx.objectStore(store).delete(Number(id));
+                        request.onsuccess = () => resolve(true);
+                        request.onerror = (e) => reject(e.target.error);
+                    } catch (err) { reject(err); }
+                });
+            },
+            async clearAll() {
+                for (const store of STORES) {
+                    const tx = this.db.transaction(store, 'readwrite');
+                    tx.objectStore(store).clear();
+                }
+            }
+        };
+
+        const Utils = {
+            formatIDR: (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0),
+            formatDate: (dateString) => {
+                if(!dateString) return '-';
+                const d = new Date(dateString);
+                return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+            },
+            logActivity: async (module, action, details) => {
+                const user = Auth.getCurrentUser();
+                await DB.save('audit_logs', {
+                    timestamp: new Date().toISOString(),
+                    userId: user?.id || 0,
+                    username: user?.username || 'System',
+                    role: user?.role || 'System',
+                    module, action, details
+                });
+            }
+        };
+
+        const Auth = {
+            currentUser: null,
+            async check() {
+                const users = await DB.getAll('users');
+                if (users.length === 0) {
+                    UI.showView('view-setup');
+                    return false;
+                }
+                const sessionStr = localStorage.getItem('ptsi_session');
+                if (sessionStr) {
+                    this.currentUser = JSON.parse(sessionStr);
+                    await this.initApp();
+                    return true;
+                }
+                UI.showView('view-login');
+                return false;
+            },
+            async setupSuperAdmin(e) {
+                e.preventDefault();
+                const name = document.getElementById('setup-name').value.trim();
+                const user = document.getElementById('setup-username').value.trim().toLowerCase();
+                const pass = document.getElementById('setup-password').value;
+
+                if(user === 'admin' || user === 'admin123' || pass === 'password' || pass === 'admin123') {
+                    return Swal.fire('Ditolak', 'Dilarang menggunakan kredensial bawaan demi keamanan.', 'error');
+                }
+                if(pass.length < 6) return Swal.fire('Gagal', 'Password minimal 6 karakter', 'warning');
+
+                const newUser = { name, username: user, password: btoa(pass), role: 'Super Admin', status: 'Aktif' };
+                await DB.save('users', newUser);
+                await Utils.logActivity('Auth', 'Setup', `Super Admin created: ${user}`);
+                
+                Swal.fire('Berhasil', 'Inisialisasi selesai! Silakan login dengan akun yang telah dibuat.', 'success').then(() => {
+                    document.getElementById('form-setup').reset();
+                    UI.showView('view-login');
+                });
+            },
+            async login(e) {
+                e.preventDefault();
+                const user = document.getElementById('login-username').value.trim().toLowerCase();
+                const pass = document.getElementById('login-password').value;
+                
+                const users = await DB.getAll('users');
+                const matched = users.find(u => u.username === user && u.password === btoa(pass) && u.status === 'Aktif');
+                
+                if (matched) {
+                    delete matched.password;
+                    localStorage.setItem('ptsi_session', JSON.stringify(matched));
+                    this.currentUser = matched;
+                    await Utils.logActivity('Auth', 'Login', `User ${user} logged in`);
+                    document.getElementById('form-login').reset();
+                    await this.initApp();
+                } else {
+                    Swal.fire('Gagal Masuk', 'Username/Password salah atau akun Anda nonaktif.', 'error');
+                }
+            },
+            logout() {
+                Utils.logActivity('Auth', 'Logout', `User logged out`).then(() => {
+                    localStorage.removeItem('ptsi_session');
+                    this.currentUser = null;
+                    window.location.reload();
+                });
+            },
+            getCurrentUser: () => Auth.currentUser,
+            async initApp() {
+                UI.showView('view-main');
+                document.getElementById('user-name-display').textContent = this.currentUser.name;
+                document.getElementById('user-role-display').textContent = this.currentUser.role;
+                document.getElementById('user-avatar').textContent = this.currentUser.name.substring(0,2).toUpperCase();
+                App.buildMenu();
+                App.renderModule('dashboard');
+            }
+        };
+
+        const SCHEMAS = {
+            projects: {
+                title: 'Project', icon: 'briefcase', store: 'projects',
+                fields: [
+                    { key: 'code', label: 'Kode Project', type: 'text', required: true },
+                    { key: 'name', label: 'Nama Project', type: 'text', required: true },
+                    { key: 'client', label: 'Klien', type: 'text', required: true },
+                    { key: 'startDate', label: 'Tanggal Mulai', type: 'date', required: true },
+                    { key: 'endDate', label: 'Tanggal Selesai', type: 'date' },
+                    { key: 'status', label: 'Status', type: 'select', options: ['Aktif', 'Selesai', 'Ditunda'] }
+                ]
+            },
+            warehouses: {
+                title: 'Gudang', icon: 'building', store: 'warehouses',
+                fields: [
+                    { key: 'code', label: 'Kode Gudang', type: 'text', required: true },
+                    { key: 'name', label: 'Nama Gudang', type: 'text', required: true },
+                    { key: 'location', label: 'Lokasi', type: 'textarea' },
+                    { key: 'manager', label: 'Penanggung Jawab', type: 'text' },
+                    { key: 'status', label: 'Status', type: 'select', options: ['Aktif', 'Nonaktif'] }
+                ]
+            },
+            suppliers: {
+                title: 'Supplier', icon: 'truck', store: 'suppliers',
+                fields: [
+                    { key: 'name', label: 'Nama Supplier', type: 'text', required: true },
+                    { key: 'contact', label: 'Kontak Person', type: 'text' },
+                    { key: 'phone', label: 'Telepon', type: 'text' },
+                    { key: 'address', label: 'Alamat', type: 'textarea' }
+                ]
+            },
+            items: {
+                title: 'Master Barang (Material/Asset)', icon: 'package', store: 'items',
+                fields: [
+                    { key: 'sku', label: 'SKU / Kode Barang', type: 'text', required: true },
+                    { key: 'name', label: 'Nama Barang/Asset', type: 'text', required: true },
+                    { key: 'type', label: 'Tipe', type: 'select', options: ['Material', 'Asset', 'Consumable'], required: true },
+                    { key: 'category', label: 'Kategori', type: 'text' },
+                    { key: 'unit', label: 'Satuan', type: 'text', required: true },
+                    { key: 'price', label: 'Harga Satuan (Rp)', type: 'number' },
+                    { key: 'stock', label: 'Stok Saat Ini', type: 'number', required: true, default: 0 },
+                    { key: 'minStock', label: 'Batas Stok Minimum', type: 'number', default: 5 }
+                ]
+            },
+            transactions: {
+                title: 'Transaksi Inventory', icon: 'arrow-right-left', store: 'transactions',
+                fields: [
+                    { key: 'type', label: 'Jenis Transaksi', type: 'select', options: ['Barang Masuk', 'Barang Keluar', 'Mutasi', 'Distribusi', 'Pembelian'], required: true },
+                    { key: 'date', label: 'Tanggal', type: 'date', required: true },
+                    { key: 'ref', label: 'No. Referensi / DO', type: 'text', required: true },
+                    { key: 'itemId', label: 'Barang / Asset', type: 'relation', store: 'items', displayKey: 'name', required: true },
+                    { key: 'qty', label: 'Jumlah (Qty)', type: 'number', required: true },
+                    { key: 'warehouseId', label: 'Gudang (Asal/Tujuan)', type: 'relation', store: 'warehouses', displayKey: 'name' },
+                    { key: 'projectId', label: 'Project (Tujuan)', type: 'relation', store: 'projects', displayKey: 'name' },
+                    { key: 'notes', label: 'Keterangan', type: 'textarea' }
+                ]
+            },
+            users: {
+                title: 'Pengguna System', icon: 'users', store: 'users',
+                fields: [
+                    { key: 'name', label: 'Nama Lengkap', type: 'text', required: true },
+                    { key: 'username', label: 'Username', type: 'text', required: true },
+                    { key: 'password', label: 'Password (Isi jika ingin diubah)', type: 'password' },
+                    { key: 'role', label: 'Role', type: 'select', options: ['Super Admin', 'Admin Gudang', 'Manajer', 'Staff'] },
+                    { key: 'status', label: 'Status', type: 'select', options: ['Aktif', 'Nonaktif'] }
+                ]
+            }
+        };
+
+        const MENU_STRUCTURE = [
+            { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+            { isDivider: true, label: 'MASTER DATA' },
+            { id: 'projects', label: 'Project', icon: 'briefcase' },
+            { id: 'warehouses', label: 'Gudang', icon: 'building' },
+            { id: 'suppliers', label: 'Supplier', icon: 'truck' },
+            { id: 'items', label: 'Barang & Asset', icon: 'package' },
+            { isDivider: true, label: 'INVENTORY' },
+            { id: 'transactions', label: 'Transaksi', icon: 'arrow-right-left' },
+            { id: 'reports', label: 'Laporan', icon: 'file-bar-chart-2' },
+            { isDivider: true, label: 'SYSTEM' },
+            { id: 'audit_logs', label: 'Audit Log', icon: 'history' },
+            { id: 'users', label: 'Pengguna', icon: 'users' },
+            { id: 'backup', label: 'Backup & Restore', icon: 'database' }
+        ];
+
+        const App = {
+            currentModule: null,
+            buildMenu() {
+                const container = document.getElementById('sidebar-menu');
+                container.innerHTML = MENU_STRUCTURE.map(item => {
+                    if(item.isDivider) return `<div class="px-3 mt-5 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">${item.label}</div>`;
+                    return `
+                        <button onclick="App.renderModule('${item.id}')" id="menu-${item.id}" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-dark-800 hover:text-white transition group text-xs font-semibold">
+                            <i data-lucide="${item.icon}" class="w-4 h-4 text-slate-400 group-hover:text-brand-500 transition shrink-0"></i>
+                            <span class="truncate">${item.label}</span>
+                        </button>
+                    `;
+                }).join('');
+                lucide.createIcons();
+            },
+            async renderModule(moduleId) {
+                this.currentModule = moduleId;
+                document.querySelectorAll('#sidebar-menu button').forEach(b => {
+                    b.classList.remove('bg-dark-800', 'text-white', 'border-l-2', 'border-brand-500');
+                    b.classList.add('text-slate-300');
+                });
+                const activeBtn = document.getElementById(`menu-${moduleId}`);
+                if(activeBtn) activeBtn.classList.add('bg-dark-800', 'text-white', 'border-l-2', 'border-brand-500');
+                
+                const titleMap = MENU_STRUCTURE.find(m => m.id === moduleId);
+                document.getElementById('header-title').textContent = titleMap ? titleMap.label : 'PTSI ERP';
+                if(window.innerWidth < 1024) document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('open');
+
+                const content = document.getElementById('main-content');
+                content.innerHTML = '<div class="flex items-center justify-center p-16"><div class="spinner"></div></div>';
+
+                if (moduleId === 'dashboard') await Dashboard.render(content);
+                else if (moduleId === 'reports') await Reports.render(content);
+                else if (moduleId === 'backup') await Backup.render(content);
+                else if (moduleId === 'audit_logs') await AuditLog.render(content);
+                else if (SCHEMAS[moduleId]) await CRUD.render(content, moduleId);
+                else content.innerHTML = '<div class="text-center p-12 text-slate-500">Modul tidak ditemukan.</div>';
+                
+                lucide.createIcons();
+            }
+        };
+
+        const CRUD = {
+            state: { module: null, data: [], filtered: [], currentPage: 1, itemsPerPage: 10, currentEditingId: null },
+            
+            async render(container, moduleId) {
+                this.state.module = SCHEMAS[moduleId];
+                this.state.currentPage = 1;
+                await this.loadData();
+                
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col h-full animate-fade-in-up">
+                        <div class="p-4 border-b border-slate-200/80 flex flex-col sm:flex-row gap-3 justify-between items-center bg-slate-50/50">
+                            <div class="relative w-full sm:w-80">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="crud-search" placeholder="Cari data ${this.state.module.title.toLowerCase()}..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition" onkeyup="CRUD.handleSearch(this.value)">
+                            </div>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="Export.toFile('${moduleId}', 'csv')" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="download" class="w-3.5 h-3.5"></i> Export</button>
+                                <button onclick="Export.toFile('${moduleId}', 'print')" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="printer" class="w-3.5 h-3.5"></i> Print</button>
+                                <button onclick="CRUD.openForm()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-md shadow-brand-600/20"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Data</button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto custom-scrollbar relative">
+                            <table class="w-full text-left border-collapse min-w-max">
+                                <thead class="bg-slate-50/90 sticky top-0 z-10 shadow-sm backdrop-blur-sm">
+                                    <tr>
+                                        <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200/80 w-12 text-center">No</th>
+                                        ${this.state.module.fields.map(f => `<th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200/80">${f.label}</th>`).join('')}
+                                        <th class="py-3 px-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200/80 text-right pr-6">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="crud-tbody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t border-slate-200/80 bg-slate-50/50 flex items-center justify-between" id="crud-pagination"></div>
+                    </div>
+                `;
+                this.renderTable();
+            },
+
+            async loadData() {
+                this.state.data = await DB.getAll(this.state.module.store);
+                
+                for (const f of this.state.module.fields) {
+                    if (f.type === 'relation') {
+                        const relData = await DB.getAll(f.store);
+                        this.state.data = this.state.data.map(row => {
+                            const matched = relData.find(r => r.id == row[f.key]);
+                            row[`_relation_${f.key}`] = matched ? (matched[f.displayKey] || matched.name || matched.code) : '-';
+                            return row;
+                        });
+                    }
+                }
+                
+                this.state.data.sort((a,b) => (b.id || 0) - (a.id || 0));
+                this.state.filtered = [...this.state.data];
+            },
+
+            handleSearch(query) {
+                query = query.toLowerCase().trim();
+                this.state.filtered = this.state.data.filter(row => {
+                    return Object.values(row).some(val => String(val).toLowerCase().includes(query));
+                });
+                this.state.currentPage = 1;
+                this.renderTable();
+            },
+
+            renderTable() {
+                const tbody = document.getElementById('crud-tbody');
+                const start = (this.state.currentPage - 1) * this.state.itemsPerPage;
+                const end = start + this.state.itemsPerPage;
+                const paginated = this.state.filtered.slice(start, end);
+
+                if (paginated.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="${this.state.module.fields.length + 2}" class="py-16 text-center text-slate-400"><i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>Tidak ada data ditemukan.</td></tr>`;
+                    lucide.createIcons();
+                    this.renderPagination();
+                    return;
+                }
+
+                tbody.innerHTML = paginated.map((row, index) => {
+                    const cols = this.state.module.fields.map(f => {
+                        let val = row[f.key] !== undefined && row[f.key] !== null ? row[f.key] : '-';
+                        if(f.type === 'relation') val = row[`_relation_${f.key}`] || val;
+                        
+                        if (f.key === 'status') {
+                            const isGreen = val === 'Aktif' || val === 'Selesai';
+                            const badgeBg = isGreen ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200';
+                            val = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeBg}">${val}</span>`;
+                        }
+                        if (f.type === 'number' && (f.key.toLowerCase().includes('price') || f.key.toLowerCase().includes('nilai'))) val = Utils.formatIDR(val);
+                        if (f.type === 'date') val = Utils.formatDate(val).split(' ')[0];
+                        if (f.type === 'password') val = '••••••••';
+                        return `<td class="py-3 px-4 text-xs font-medium text-slate-700 whitespace-nowrap">${val}</td>`;
+                    }).join('');
+
+                    return `
+                        <tr class="hover:bg-slate-50/80 transition group">
+                            <td class="py-3 px-4 text-xs text-slate-400 text-center font-medium">${start + index + 1}</td>
+                            ${cols}
+                            <td class="py-3 px-4 text-right whitespace-nowrap pr-6">
+                                <button onclick="CRUD.openForm(${row.id})" class="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg mr-1 transition" title="Edit Data"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="CRUD.deleteData(${row.id})" class="text-rose-600 hover:text-rose-800 p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg transition" title="Hapus Data"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                lucide.createIcons();
+                this.renderPagination();
+            },
+
+            renderPagination() {
+                const totalPages = Math.ceil(this.state.filtered.length / this.state.itemsPerPage);
+                const container = document.getElementById('crud-pagination');
+                if(totalPages <= 1) { container.innerHTML = `<div class="text-xs font-medium text-slate-500">Total: ${this.state.filtered.length} Data</div>`; return; }
+                
+                const start = (this.state.currentPage - 1) * this.state.itemsPerPage + 1;
+                const end = Math.min(start + this.state.itemsPerPage - 1, this.state.filtered.length);
+                
+                let html = `<div class="text-xs font-medium text-slate-500">Menampilkan ${start}-${end} dari ${this.state.filtered.length} Data</div><div class="flex items-center gap-1">`;
+                html += `<button onclick="CRUD.changePage(${this.state.currentPage - 1})" ${this.state.currentPage === 1 ? 'disabled class="px-3 py-1.5 border border-slate-200 text-slate-300 rounded-lg bg-slate-50 text-xs font-semibold cursor-not-allowed"' : 'class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100 text-xs font-semibold transition"'}>Prev</button>`;
+                html += `<div class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 rounded-lg">${this.state.currentPage} / ${totalPages}</div>`;
+                html += `<button onclick="CRUD.changePage(${this.state.currentPage + 1})" ${this.state.currentPage === totalPages ? 'disabled class="px-3 py-1.5 border border-slate-200 text-slate-300 rounded-lg bg-slate-50 text-xs font-semibold cursor-not-allowed"' : 'class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-100 text-xs font-semibold transition"'}>Next</button>`;
+                html += `</div>`;
+                container.innerHTML = html;
+            },
+
+            changePage(page) {
+                const totalPages = Math.ceil(this.state.filtered.length / this.state.itemsPerPage);
+                if(page >= 1 && page <= totalPages) {
+                    this.state.currentPage = page;
+                    this.renderTable();
+                }
+            },
+
+            async openForm(id = null) {
+                this.state.currentEditingId = id;
+                document.getElementById('modal-title').textContent = (id ? 'Edit Data ' : 'Tambah Data ') + this.state.module.title;
+                const form = document.getElementById('crud-form');
+                form.innerHTML = '<div class="flex justify-center p-8"><div class="spinner"></div></div>';
+                UI.openModal();
+
+                let data = null;
+                if(id) data = this.state.data.find(d => d.id === id);
+
+                let relationsHtml = {};
+                for (const f of this.state.module.fields) {
+                    if (f.type === 'relation') {
+                        const relData = await DB.getAll(f.store);
+                        relationsHtml[f.key] = relData.map(r => `<option value="${r.id}">${r[f.displayKey] || r.name || r.code}</option>`).join('');
+                    }
+                }
+
+                form.innerHTML = this.state.module.fields.map(f => {
+                    let val = data ? data[f.key] : (f.default !== undefined ? f.default : '');
+                    if (f.type === 'password') val = ''; 
+
+                    const isReadonly = f.readonly ? 'readonly class="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50 text-slate-500 rounded-xl text-xs font-medium"' : 'class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none transition"';
+                    const isRequired = f.required ? 'required' : '';
+                    
+                    let inputHtml = '';
+                    if (f.type === 'textarea') {
+                        inputHtml = `<textarea id="field-${f.key}" rows="3" ${isReadonly} ${isRequired}>${val || ''}</textarea>`;
+                    } else if (f.type === 'select') {
+                        const opts = f.options.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
+                        inputHtml = `<select id="field-${f.key}" ${isReadonly} ${isRequired}>${opts}</select>`;
+                    } else if (f.type === 'relation') {
+                        inputHtml = `<select id="field-${f.key}" ${isReadonly} ${isRequired}><option value="">-- Pilih Data --</option>${relationsHtml[f.key]}</select>`;
+                        setTimeout(() => { if(val) document.getElementById(`field-${f.key}`).value = val; }, 10);
+                    } else if (f.type === 'password') {
+                        inputHtml = `
+                            <div class="relative">
+                                <input type="password" id="field-${f.key}" value="" ${isReadonly} ${isRequired} placeholder="Masukkan password baru">
+                                <button type="button" onclick="UI.togglePasswordVisibility('field-${f.key}', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        inputHtml = `<input type="${f.type}" id="field-${f.key}" value="${val !== undefined ? val : ''}" ${isReadonly} ${isRequired}>`;
+                    }
+
+                    return `
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">${f.label} ${f.required ? '<span class="text-rose-500">*</span>' : ''}</label>
+                            ${inputHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                lucide.createIcons();
+
+                // Dynamic stock warning helper for transaction forms
+                if(this.state.module.store === 'transactions') {
+                    setTimeout(() => {
+                        const typeEl = document.getElementById('field-type');
+                        const itemEl = document.getElementById('field-itemId');
+                        const qtyEl = document.getElementById('field-qty');
+                        
+                        const calcStockHelp = async () => {
+                            if(!itemEl || !itemEl.value || !qtyEl || !qtyEl.value || !typeEl) return;
+                            const item = await DB.get('items', itemEl.value);
+                            if(item) {
+                                let label = `<span class="text-slate-500">Stok Tersedia Saat Ini: <strong>${item.stock} ${item.unit || ''}</strong></span>`;
+                                if(typeEl.value === 'Barang Keluar' || typeEl.value === 'Distribusi') {
+                                    if(Number(qtyEl.value) > item.stock) {
+                                        label = `<span class="text-rose-600 font-bold flex items-center gap-1 mt-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Perhatian: Jumlah melampaui stok yang ada (${item.stock})</span>`;
+                                    }
+                                }
+                                let helpEl = document.getElementById('stock-help');
+                                if(!helpEl) {
+                                    helpEl = document.createElement('div');
+                                    helpEl.id = 'stock-help';
+                                    helpEl.className = 'text-xs mt-1.5';
+                                    qtyEl.parentNode.appendChild(helpEl);
+                                }
+                                helpEl.innerHTML = label;
+                                lucide.createIcons();
+                            }
+                        };
+                        if(typeEl) typeEl.addEventListener('change', calcStockHelp);
+                        if(itemEl) itemEl.addEventListener('change', calcStockHelp);
+                        if(qtyEl) qtyEl.addEventListener('input', calcStockHelp);
+                    }, 50);
+                }
+            },
+
+            async saveForm() {
+                const form = document.getElementById('crud-form');
+                if(!form.reportValidity()) return;
+
+                const payload = {};
+                if (this.state.currentEditingId) payload.id = this.state.currentEditingId;
+
+                for (const f of this.state.module.fields) {
+                    const el = document.getElementById(`field-${f.key}`);
+                    if(el) {
+                        let val = el.value;
+                        if(f.type === 'number') val = Number(val);
+                        if(f.type === 'password' && val) val = btoa(val);
+                        if(f.type === 'password' && !val && this.state.currentEditingId) {
+                           const oldData = this.state.data.find(d => d.id === this.state.currentEditingId);
+                           val = oldData ? oldData.password : '';
+                        }
+                        payload[f.key] = val;
+                    }
+                }
+
+                try {
+                    // Inventory movement calculation logic
+                    if (this.state.module.store === 'transactions') {
+                        const item = await DB.get('items', payload.itemId);
+                        if(item) {
+                            let qtyDiff = payload.qty;
+                            if(this.state.currentEditingId) {
+                                const oldData = this.state.data.find(d => d.id === this.state.currentEditingId);
+                                if(oldData && oldData.itemId == payload.itemId) {
+                                    if(oldData.type === 'Barang Masuk' || oldData.type === 'Pembelian') item.stock -= oldData.qty;
+                                    else if(oldData.type === 'Barang Keluar' || oldData.type === 'Distribusi') item.stock += oldData.qty;
+                                }
+                            }
+                            if(payload.type === 'Barang Masuk' || payload.type === 'Pembelian') item.stock += qtyDiff;
+                            else if(payload.type === 'Barang Keluar' || payload.type === 'Distribusi') item.stock -= qtyDiff;
+                            
+                            if(item.stock < 0) return Swal.fire('Gagal Transaksi', 'Stok tidak mencukupi untuk melakukan transaksi pengeluaran ini.', 'error');
+                            await DB.save('items', item);
+                        }
+                    }
+
+                    await DB.save(this.state.module.store, payload);
+                    await Utils.logActivity(this.state.module.title, this.state.currentEditingId ? 'Edit Data' : 'Tambah Data', `${payload.name || payload.code || payload.type || 'ID:'+payload.id}`);
+                    
+                    UI.closeModal();
+                    Swal.fire({ title: 'Tersimpan!', text: 'Data berhasil diperbarui', icon: 'success', timer: 1500, showConfirmButton: false });
+                    await this.loadData();
+                    this.renderTable();
+                } catch (e) {
+                    Swal.fire('Error Database', e.message || "Gagal menyimpan data", 'error');
+                }
+            },
+
+            async deleteData(id) {
+                const result = await Swal.fire({
+                    title: 'Hapus Data ini?', text: "Data yang dihapus tidak dapat dipulihkan kembali!", icon: 'warning',
+                    showCancelButton: true, confirmButtonColor: '#e11d48', cancelButtonColor: '#64748b', confirmButtonText: 'Ya, Hapus Data', cancelButtonText: 'Batal'
+                });
+
+                if (result.isConfirmed) {
+                    if (this.state.module.store === 'transactions') {
+                        const oldData = this.state.data.find(d => d.id === id);
+                        if(oldData) {
+                            const item = await DB.get('items', oldData.itemId);
+                            if(item) {
+                                if(oldData.type === 'Barang Masuk' || oldData.type === 'Pembelian') item.stock -= oldData.qty;
+                                else if(oldData.type === 'Barang Keluar' || oldData.type === 'Distribusi') item.stock += oldData.qty;
+                                await DB.save('items', item);
+                            }
+                        }
+                    }
+                    await DB.delete(this.state.module.store, id);
+                    await Utils.logActivity(this.state.module.title, 'Hapus Data', `ID: ${id}`);
+                    Swal.fire({ title: 'Terhapus!', text: 'Data telah sukses dihapus.', icon: 'success', timer: 1500, showConfirmButton: false });
+                    await this.loadData();
+                    this.renderTable();
+                }
+            }
+        };
+
+        const Dashboard = {
+            async render(container) {
+                const items = await DB.getAll('items');
+                const projects = await DB.getAll('projects');
+                const transactions = await DB.getAll('transactions');
+
+                const totalItems = items.length;
+                const totalAssetValue = items.reduce((acc, curr) => acc + ((curr.price || 0) * (curr.stock || 0)), 0);
+                const lowStockItems = items.filter(i => i.stock <= (i.minStock || 5));
+                const activeProjects = projects.filter(p => p.status === 'Aktif').length;
+
+                const recentLogs = await DB.getAll('audit_logs');
+                recentLogs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const logsHtml = recentLogs.slice(0, 6).map(l => `
+                    <div class="flex items-start gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                        <div class="w-2.5 h-2.5 rounded-full bg-brand-500 mt-1 shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center gap-2">
+                                <p class="text-xs font-bold text-slate-800 truncate">${l.username}</p>
+                                <span class="text-[10px] font-medium text-slate-400 shrink-0">${Utils.formatDate(l.timestamp)}</span>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-0.5"><span class="font-bold text-brand-600">[${l.module}]</span> ${l.action}: ${l.details}</p>
+                        </div>
+                    </div>
+                `).join('') || '<p class="text-xs text-slate-400 text-center py-6">Belum ada catatan audit trail.</p>';
+
+                container.innerHTML = `
+                    <div class="space-y-6 animate-fade-in-up">
+                        <!-- Stat Summary Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-brand-500/30 transition">
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0"><i data-lucide="package" class="w-6 h-6"></i></div>
+                                <div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Barang/Aset</p><p class="text-2xl font-black text-slate-800 mt-0.5">${totalItems}</p></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-brand-500/30 transition">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0"><i data-lucide="wallet" class="w-6 h-6"></i></div>
+                                <div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estimasi Nilai Aset</p><p class="text-lg font-black text-slate-800 mt-0.5 truncate">${Utils.formatIDR(totalAssetValue)}</p></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-brand-500/30 transition">
+                                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+                                <div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stok Menipis</p><p class="text-2xl font-black text-slate-800 mt-0.5">${lowStockItems.length}</p></div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4 hover:border-brand-500/30 transition">
+                                <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0"><i data-lucide="briefcase" class="w-6 h-6"></i></div>
+                                <div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Aktif</p><p class="text-2xl font-black text-slate-800 mt-0.5">${activeProjects}</p></div>
+                            </div>
+                        </div>
+
+                        <!-- Main Content Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col overflow-hidden">
+                                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i data-lucide="arrow-right-left" class="w-4 h-4 text-brand-600"></i> Transaksi Terakhir</h3>
+                                    <button onclick="App.renderModule('transactions')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Lihat Semua &rarr;</button>
+                                </div>
+                                <div class="p-0 overflow-x-auto custom-scrollbar flex-1">
+                                    <table class="w-full text-left text-xs">
+                                        <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+                                            <tr><th class="py-2.5 px-4">Tipe</th><th class="py-2.5 px-4">Tanggal</th><th class="py-2.5 px-4">No. Ref</th><th class="py-2.5 px-4 text-right">Qty</th></tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            ${transactions.slice(-6).reverse().map(t => `
+                                                <tr class="hover:bg-slate-50 transition">
+                                                    <td class="py-2.5 px-4 font-bold ${t.type.includes('Masuk')||t.type.includes('Pembelian')?'text-emerald-600':'text-rose-600'}">${t.type}</td>
+                                                    <td class="py-2.5 px-4 text-slate-600 font-medium">${Utils.formatDate(t.date).split(' ')[0]}</td>
+                                                    <td class="py-2.5 px-4 text-slate-500 font-mono">${t.ref || '-'}</td>
+                                                    <td class="py-2.5 px-4 font-black text-slate-800 text-right">${t.qty}</td>
+                                                </tr>
+                                            `).join('') || '<tr><td colspan="4" class="py-8 text-center text-slate-400">Belum ada riwayat transaksi.</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col overflow-hidden">
+                                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-brand-600"></i> Audit Trail Activity</h3>
+                                </div>
+                                <div class="p-4 space-y-3.5 flex-1 overflow-auto custom-scrollbar max-h-[350px]">${logsHtml}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        const Reports = {
+            async render(container) {
+                container.innerHTML = `
+                    <div class="space-y-6 animate-fade-in-up">
+                        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                            <h3 class="font-bold text-slate-800 text-base mb-1">Generator Laporan Terpadu</h3>
+                            <p class="text-xs text-slate-500 mb-4">Pilih jenis data modul untuk dikompilasi menjadi dokumen laporan siap cetak atau ekspor.</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pilih Modul Laporan</label>
+                                    <select id="rep-module" class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 outline-none text-xs font-semibold bg-white transition">
+                                        <option value="items">Master Barang & Asset Inventory</option>
+                                        <option value="transactions">Riwayat Transaksi Masuk/Keluar</option>
+                                        <option value="projects">Daftar Project Operational</option>
+                                        <option value="warehouses">Daftar Gudang & Lokasi</option>
+                                        <option value="suppliers">Daftar Supplier Vendor</option>
+                                        <option value="audit_logs">Audit Trail Log Activity</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-end">
+                                    <button onclick="Reports.generate()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-600/20 transition flex items-center justify-center gap-2">
+                                        <i data-lucide="file-check" class="w-4 h-4"></i> Generate Preview Laporan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="rep-preview" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col hidden-force">
+                            <div class="p-4 border-b border-slate-100 flex flex-wrap gap-2 justify-between items-center bg-slate-50/50 shrink-0">
+                                <h4 class="font-bold text-slate-800 text-sm" id="rep-title">Preview Laporan</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="Export.printReport('rep-content')" class="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition flex items-center gap-1.5 shadow-sm"><i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak</button>
+                                    <button type="button" onclick="Export.toPDF('rep-content')" class="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold hover:bg-rose-100 transition flex items-center gap-1.5"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> PDF</button>
+                                    <button type="button" onclick="Export.toExcel('rep-table', 'Report_PTSI')" class="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold hover:bg-emerald-100 transition flex items-center gap-1.5"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Excel</button>
+                                    <button type="button" onclick="Export.toImage('rep-content')" class="px-3 py-1.5 bg-purple-50 border border-purple-200 text-purple-700 rounded-xl text-xs font-semibold hover:bg-purple-100 transition flex items-center gap-1.5"><i data-lucide="image" class="w-3.5 h-3.5"></i> PNG</button>
+                                    <button type="button" onclick="Export.shareReport()" class="px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-semibold hover:bg-blue-100 transition flex items-center gap-1.5"><i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan</button>
+                                </div>
+                            </div>
+                            <div class="p-6 flex-1 overflow-auto custom-scrollbar" id="rep-content"></div>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+            async generate() {
+                const module = document.getElementById('rep-module').value;
+                const rawData = await DB.getAll(module);
+                const schema = SCHEMAS[module];
+                const titleMap = { 
+                    items: 'Laporan Master Barang & Asset', 
+                    transactions: 'Laporan Riwayat Transaksi', 
+                    projects: 'Laporan Daftar Project', 
+                    warehouses: 'Laporan Daftar Gudang',
+                    suppliers: 'Laporan Daftar Supplier', 
+                    audit_logs: 'Laporan Audit Trail' 
+                };
+                
+                document.getElementById('rep-preview').classList.remove('hidden-force');
+                document.getElementById('rep-title').textContent = titleMap[module] || 'Laporan';
+                
+                if(rawData.length === 0) {
+                    document.getElementById('rep-content').innerHTML = '<p class="text-center text-slate-400 py-12">Tidak ada data tersedia untuk dikompilasi pada modul ini.</p>';
+                    return;
+                }
+
+                let data = JSON.parse(JSON.stringify(rawData));
+
+                if (schema) {
+                    for (const f of schema.fields) {
+                        if (f.type === 'relation') {
+                            const relData = await DB.getAll(f.store);
+                            data.forEach(row => {
+                                const matched = relData.find(r => r.id == row[f.key]);
+                                row[f.key] = matched ? (matched[f.displayKey] || matched.name || matched.code) : '-';
+                            });
+                        }
+                    }
+                }
+
+                const keys = Object.keys(data[0]).filter(k => k !== 'id' && !k.startsWith('_'));
+                let tableHtml = `
+                    <div class="text-center mb-6 pb-4 border-b border-slate-200">
+                        <h2 class="text-lg font-black text-slate-800 tracking-wider">PTSI ERP MANAGEMENT SYSTEM</h2>
+                        <p class="text-sm font-bold text-brand-600 mt-0.5">${titleMap[module].toUpperCase()}</p>
+                        <p class="text-xs text-slate-400 mt-1">Dicetak pada: ${Utils.formatDate(new Date().toISOString())}</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="rep-table" class="w-full text-left text-xs border-collapse border border-slate-300">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="p-2 border border-slate-300 w-10 text-center font-bold text-slate-700">No</th>
+                    `;
+                keys.forEach(k => tableHtml += `<th class="p-2 border border-slate-300 uppercase font-bold text-slate-700">${k}</th>`);
+                tableHtml += `</tr></thead><tbody>`;
+                
+                data.forEach((row, idx) => {
+                    tableHtml += `<tr class="hover:bg-slate-50"><td class="p-2 border border-slate-300 text-center text-slate-500 font-medium">${idx+1}</td>`;
+                    keys.forEach(k => {
+                        let val = row[k];
+                        if(typeof val === 'number' && (k.toLowerCase().includes('price') || k.toLowerCase().includes('nilai'))) val = Utils.formatIDR(val);
+                        if(k.toLowerCase().includes('date') || k.toLowerCase().includes('time')) val = Utils.formatDate(val);
+                        tableHtml += `<td class="p-2 border border-slate-300 text-slate-700 font-medium">${val !== undefined && val !== null ? val : '-'}</td>`;
+                    });
+                    tableHtml += `</tr>`;
+                });
+                tableHtml += `</tbody></table></div>`;
+                
+                document.getElementById('rep-content').innerHTML = tableHtml;
+                lucide.createIcons();
+            }
+        };
+
+        const AuditLog = {
+            async render(container) {
+                const logs = await DB.getAll('audit_logs');
+                logs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                let rows = logs.map((l, i) => `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="p-3 text-xs text-slate-400 text-center font-medium">${i+1}</td>
+                        <td class="p-3 text-xs text-slate-600 whitespace-nowrap font-mono">${Utils.formatDate(l.timestamp)}</td>
+                        <td class="p-3 text-xs font-bold text-slate-800">${l.username} <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full ml-1 border border-slate-200">${l.role}</span></td>
+                        <td class="p-3 text-xs text-slate-700"><span class="font-bold text-brand-600">[${l.module}]</span> ${l.action}</td>
+                        <td class="p-3 text-xs text-slate-600">${l.details}</td>
+                    </tr>
+                `).join('');
+
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col h-full animate-fade-in-up overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
+                            <h3 class="font-bold text-slate-800 text-sm">Riwayat Audit Trail Activity</h3>
+                            <button onclick="Export.toFile('audit_logs', 'csv')" class="px-3.5 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition shadow-sm"><i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i> Export CSV</button>
+                        </div>
+                        <div class="flex-1 overflow-auto custom-scrollbar">
+                            <table class="w-full text-left min-w-max">
+                                <thead class="bg-slate-50 sticky top-0 shadow-sm text-[11px] text-slate-500 uppercase font-bold tracking-wider">
+                                    <tr><th class="p-3 text-center">No</th><th class="p-3">Waktu</th><th class="p-3">Pengguna</th><th class="p-3">Aksi</th><th class="p-3">Detail Deskripsi</th></tr>
+                                </thead>
+                                <tbody>${rows || '<tr><td colspan="5" class="p-12 text-center text-slate-400">Tidak ada log aktivitas.</td></tr>'}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        };
+
+        const Backup = {
+            async render(container) {
+                container.innerHTML = `
+                    <div class="max-w-3xl mx-auto space-y-6 animate-fade-in-up">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0"><i data-lucide="download-cloud" class="w-6 h-6"></i></div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-800">Backup Database (Export JSON)</h3>
+                                    <p class="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">Unduh seluruh berkas data lokal sistem ke dalam format file JSON sebagai cadangan data berkala.</p>
+                                    <button onclick="Backup.exportDB()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition shadow-md shadow-brand-600/20 flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i> Download Backup JSON</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm border-l-4 border-l-amber-500">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
+                                <div class="w-full min-w-0">
+                                    <h3 class="text-base font-bold text-slate-800">Restore Database (Import JSON)</h3>
+                                    <p class="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">Pulihkan database sistem dari berkas cadangan JSON. <strong class="text-rose-600">Perhatian: Seluruh data yang ada saat ini akan digantikan!</strong></p>
+                                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+                                        <input type="file" id="restore-file" accept=".json" class="flex-1 text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 cursor-pointer border border-slate-200 rounded-xl">
+                                        <button onclick="Backup.importDB()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shrink-0 shadow-md shadow-amber-600/20"><i data-lucide="upload" class="w-4 h-4"></i> Jalankan Restore</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+            async exportDB() {
+                try {
+                    UI.showLoader();
+                    let dump = {};
+                    for(const store of STORES) dump[store] = await DB.getAll(store);
+                    
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dump));
+                    const dlAnchorElem = document.createElement('a');
+                    dlAnchorElem.setAttribute("href", dataStr);
+                    dlAnchorElem.setAttribute("download", `PTSI_ERP_Backup_${new Date().toISOString().split('T')[0]}.json`);
+                    dlAnchorElem.click();
+                    
+                    await Utils.logActivity('System', 'Backup', 'Database exported to JSON');
+                    UI.hideLoader();
+                    Swal.fire('Berhasil', 'Backup database berhasil diunduh.', 'success');
+                } catch(e) { UI.hideLoader(); Swal.fire('Error', e.message, 'error'); }
+            },
+            async importDB() {
+                const fileInput = document.getElementById('restore-file');
+                if(!fileInput.files.length) return Swal.fire('Perhatian', 'Silakan pilih berkas backup JSON terlebih dahulu.', 'warning');
+                
+                const confirm = await Swal.fire({
+                    title: 'Jalankan Restore Data?', text: "Data lokal saat ini akan ditimpa penuh oleh data backup!", icon: 'warning',
+                    showCancelButton: true, confirmButtonColor: '#d97706', cancelButtonColor: '#64748b', confirmButtonText: 'Ya, Restore Sekarang', cancelButtonText: 'Batal'
+                });
+
+                if(confirm.isConfirmed) {
+                    UI.showLoader();
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            await DB.clearAll();
+                            for(const store of STORES) {
+                                if(data[store]) {
+                                    for(const item of data[store]) await DB.save(store, item);
+                                }
+                            }
+                            await Utils.logActivity('System', 'Restore', 'Database restored from JSON');
+                            UI.hideLoader();
+                            Swal.fire('Restorasi Selesai', 'Database berhasil direstore. Silakan masuk kembali.', 'success').then(() => Auth.logout());
+                        } catch(err) {
+                            UI.hideLoader();
+                            Swal.fire('Gagal Restore', 'File JSON backup tidak valid atau rusak.', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+        };
+
+        const Export = {
+            async toFile(storeName, format) {
+                const data = await DB.getAll(storeName);
+                if(data.length === 0) return Swal.fire('Data Kosong', 'Tidak ada baris data untuk diexport', 'info');
+                
+                if(format === 'csv') {
+                    const keys = Object.keys(data[0]);
+                    const csvContent = "data:text/csv;charset=utf-8," + keys.join(",") + "\n" + data.map(e => keys.map(k => `"${e[k]}"`).join(",")).join("\n");
+                    const encodedUri = encodeURI(csvContent);
+                    const link = document.createElement("a");
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", `${storeName}_export.csv`);
+                    document.body.appendChild(link);
+                    link.click(); link.remove();
+                } else if(format === 'print') {
+                    let html = `<html><head><title>Print ${storeName}</title><style>table{width:100%;border-collapse:collapse;font-family:sans-serif;font-size:12px;} th,td{border:1px solid #ccc;padding:8px;text-align:left;} h2{font-family:sans-serif;}</style></head><body><h2>DATA ${storeName.toUpperCase()}</h2><table><thead><tr>`;
+                    const keys = Object.keys(data[0]);
+                    keys.forEach(k => html += `<th>${k}</th>`);
+                    html += `</tr></thead><tbody>`;
+                    data.forEach(row => { html += `<tr>`; keys.forEach(k => html += `<td>${row[k]}</td>`); html += `</tr>`; });
+                    html += `</tbody></table></body></html>`;
+                    
+                    const printWindow = window.open('', '', 'height=600,width=800');
+                    if (printWindow) {
+                        printWindow.document.write(html);
+                        printWindow.document.close();
+                        printWindow.print();
+                    } else {
+                        window.print();
+                    }
+                }
+            },
+            toExcel(tableId, filename) {
+                try {
+                    const elt = document.getElementById(tableId);
+                    if (!elt) return Swal.fire('Error', 'Tabel data tidak ditemukan.', 'error');
+                    const wb = XLSX.utils.table_to_book(elt, {sheet:"Laporan PTSI"});
+                    XLSX.writeFile(wb, `${filename}_${Date.now()}.xlsx`);
+                } catch(e) {
+                    Swal.fire('Gagal Export Excel', e.message, 'error');
+                }
+            },
+            toPDF(elementId) {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF('l', 'pt', 'a4');
+                    const source = document.getElementById(elementId);
+                    if(!source) return Swal.fire('Error', 'Konten laporan kosong.', 'error');
+                    
+                    const table = source.querySelector('table');
+                    if(!table) return Swal.fire('Error', 'Tabel laporan tidak ditemukan.', 'error');
+
+                    doc.autoTable({ 
+                        html: table, 
+                        theme: 'grid', 
+                        styles: { fontSize: 8 },
+                        headStyles: { fillColor: [22, 163, 74] } 
+                    });
+                    doc.save(`PTSI_Report_${Date.now()}.pdf`);
+                } catch(e) {
+                    Swal.fire('Gagal Export PDF', e.message, 'error');
+                }
+            },
+            toImage(elementId) {
+                try {
+                    const el = document.getElementById(elementId);
+                    if(!el) return Swal.fire('Error', 'Konten laporan tidak ditemukan.', 'error');
+                    
+                    html2canvas(el, { scale: 2 }).then(canvas => {
+                        const link = document.createElement('a');
+                        link.download = `PTSI_Report_${Date.now()}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    }).catch(err => {
+                        Swal.fire('Gagal Render', 'Gagal merender gambar laporan.', 'error');
+                    });
+                } catch(e) {
+                    Swal.fire('Gagal Export Image', e.message, 'error');
+                }
+            },
+            printReport(elementId) {
+                const el = document.getElementById(elementId);
+                if(!el) return Swal.fire('Error', 'Konten laporan tidak ditemukan.', 'error');
+                
+                const printWindow = window.open('', '', 'height=600,width=800');
+                if (printWindow) {
+                    printWindow.document.write(`<html><head><title>Cetak Laporan PTSI ERP</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:15px;} th,td{border:1px solid #cbd5e1;padding:8px;font-size:11px;text-align:left;} th{background-color:#f1f5f9; font-weight:bold;}</style></head><body>${el.innerHTML}</body></html>`);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    setTimeout(() => {
+                        printWindow.print();
+                        printWindow.close();
+                    }, 500);
+                } else {
+                    window.print();
+                }
+            },
+            async shareReport() {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Laporan PTSI ERP',
+                            text: 'Berikut adalah laporan inventaris dan asset PTSI ERP.',
+                            url: window.location.href
+                        });
+                    } catch(err) { console.log('Share browser closed'); }
+                } else {
+                    Swal.fire('Info Web Share', 'Fitur bagikan Web Share API tidak didukung di browser ini. Silakan gunakan tombol unduh PDF/Excel.', 'info');
+                }
+            }
+        };
+
+        const UI = {
+            showView(id) {
+                ['view-setup', 'view-login', 'view-main'].forEach(v => document.getElementById(v).classList.add('hidden-force'));
+                document.getElementById(id).classList.remove('hidden-force');
+                lucide.createIcons();
+            },
+            showLoader() { document.getElementById('global-loader').style.display = 'flex'; },
+            hideLoader() { document.getElementById('global-loader').style.display = 'none'; },
+            openModal() { document.getElementById('crud-modal').classList.remove('hidden-force'); },
+            closeModal() { document.getElementById('crud-modal').classList.add('hidden-force'); },
+            togglePasswordVisibility(inputId, btn) {
+                const input = document.getElementById(inputId);
+                if(input) {
+                    if(input.type === 'password') {
+                        input.type = 'text';
+                        btn.innerHTML = `<i data-lucide="eye-off" class="w-4 h-4"></i>`;
+                    } else {
+                        input.type = 'password';
+                        btn.innerHTML = `<i data-lucide="eye" class="w-4 h-4"></i>`;
+                    }
+                    lucide.createIcons();
+                }
+            }
+        };
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('open');
+        }
+
+        window.onload = async () => {
+            try {
+                await DB.init();
+                document.getElementById('form-setup').addEventListener('submit', Auth.setupSuperAdmin);
+                document.getElementById('form-login').addEventListener('submit', Auth.login.bind(Auth));
+                await Auth.check();
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<div class="p-8 text-center text-rose-600 font-bold">Terjadi kesalahan saat memuat IndexedDB. Pastikan browser Anda mendukung teknologi penyimpanan lokal.</div>`;
+            } finally {
+                setTimeout(() => UI.hideLoader(), 350); 
+            }
+        };
+    </script>
+</body>
+</html>
